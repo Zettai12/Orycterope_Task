@@ -1,0 +1,58 @@
+---
+- name: Install docker playbook
+  hosts: myhosts
+  become: true
+  
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+     
+    - name: Install certificate and curl
+      ansible.builtin.apt:
+        name: 
+          - curl
+          - ca-certificates
+        state: present
+
+    - name: Create GPG directory
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Download Docker's GPG 
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+        
+    - name: Add docker repository to apt sources
+      ansible.builtin.deb822_repository:
+        name: docker
+        types: deb
+        uris: https://download.docker.com/linux/ubuntu
+        suites: '{{ ansible_distribution_release }}'
+        components: stable
+        architectures: amd64
+        signed_by: /etc/apt/keyrings/docker.asc
+
+    - name: Update apt cache again
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Docker-Engine
+      ansible.builtin.apt:
+        name:
+          - docker-ce=5:26.0.0-1~ubuntu.24.04~noble
+          - docker-ce-cli=5:26.0.0-1~ubuntu.24.04~noble
+          - containerd.io 
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        
+    - name: Ensure Docker service is enabled and started
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: yes
